@@ -1,34 +1,69 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FileUploadZone } from "@/components/molecules/FileUploadZone";
 import { FileChip } from "@/components/atoms/FileChip";
 import { ComparisonReport } from "@/components/organisms/ComparisonReport";
 import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useContractComparison } from "@/custom_hocks/hooks/useContractComparison";
-import { ArrowLeftRight, Loader2 } from "lucide-react";
-import { extractText } from "@/api/services/api";
+import {
+  ArrowLeftRight,
+  Loader2,
+  WifiOff,
+  CheckCircle,
+  FileStack,
+} from "lucide-react";
+import { extractText, checkAPIHealth } from "@/api/services/api";
 
 export default function App() {
   const [standard, setStandard] = useState<File | null>(null);
   const [standardText, setStandardText] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [contracts, setContracts] = useState<File[]>([]);
+  const [apiStatus, setApiStatus] = useState<"checking" | "online" | "offline">(
+    "checking"
+  );
+
   const { loading, error, comparisons, compareAll, translate } =
     useContractComparison();
+
+  useEffect(() => {
+    const checkAPI = async () => {
+      const isHealthy = await checkAPIHealth();
+      setApiStatus(isHealthy ? "online" : "offline");
+    };
+    checkAPI();
+  }, []);
 
   const handleStandardUpload = async (files: FileList) => {
     const file = files[0];
     if (!file) return;
 
     setStandard(file);
-    setStandardText("Extracting text, please wait...");
+    setStandardText(
+      "⏳ Waking up API (first request takes 30-90 seconds)...\n\nExtracting text, please wait..."
+    );
     setExtracting(true);
 
     try {
       const text = await extractText(file);
       setStandardText(text || "No readable text found.");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Extraction Error:", err);
-      setStandardText("Failed to extract text from the master contract.");
+
+      if (err.message?.includes("timeout")) {
+        setStandardText(
+          "⚠️ Request timed out.\n\n" +
+            "The API is waking up from sleep mode.\n" +
+            "Please wait 30 seconds and try again."
+        );
+      } else if (err.message?.includes("404")) {
+        setStandardText(
+          "❌ API endpoint not found.\n\n" +
+            "Please verify the API is deployed correctly."
+        );
+      } else {
+        setStandardText(`❌ Extraction failed:\n\n${err.message}`);
+      }
     } finally {
       setExtracting(false);
     }
@@ -37,13 +72,54 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] py-8 md:py-16">
       <div className="container mx-auto px-4 max-w-6xl">
-        <h1 className="text-4xl md:text-6xl font-bold text-white text-center mb-4 drop-shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
-          Smart Contract Comparator
-        </h1>
-        <p className="text-white/90 text-center mb-12 text-lg max-w-3xl mx-auto">
+        {/* ✅ Header with OCR Button */}
+        <div className="flex justify-between items-center mb-4 gap-4">
+          {/* Empty spacer for alignment on mobile */}
+          <div className="w-8 md:w-0"></div>
+
+          {/* Main Title */}
+          <h1 className="text-4xl md:text-6xl font-bold text-white text-center flex-1 drop-shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
+            Smart Contract Comparator
+          </h1>
+
+          {/* OCR Button */}
+          <a
+            href="https://www.ilovepdf.com/ocr-pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-xl text-white font-semibold transition-all shadow-lg hover:shadow-xl group shrink-0"
+          >
+            <FileStack className="w-5 h-5 group-hover:scale-110 transition-transform" />
+            <span className="hidden md:inline">OCR Tool</span>
+          </a>
+        </div>
+
+        <p className="text-white/90 text-center mb-6 text-lg max-w-3xl mx-auto">
           Upload your master contract once, then compare unlimited contracts
           instantly
         </p>
+
+        {/* API Status Indicator */}
+        <div className="flex justify-center mb-8">
+          {apiStatus === "checking" ? (
+            <Alert className="bg-white/20 border-white/30 text-white max-w-md">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <AlertDescription>Checking API status...</AlertDescription>
+            </Alert>
+          ) : apiStatus === "online" ? (
+            <Alert className="bg-green-500/20 border-green-500/50 text-white max-w-md">
+              <CheckCircle className="h-4 w-4" />
+              <AlertDescription>API is online and ready ✓</AlertDescription>
+            </Alert>
+          ) : (
+            <Alert className="bg-red-500/20 border-red-500/50 text-white max-w-md">
+              <WifiOff className="h-4 w-4" />
+              <AlertDescription>
+                API is offline. First request may take 60+ seconds to wake up.
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
 
         <div className="space-y-6">
           {!standard ? (
@@ -96,7 +172,9 @@ export default function App() {
 
           <Button
             onClick={() => standard && compareAll(standard, contracts)}
-            disabled={!standard || contracts.length === 0 || loading}
+            disabled={
+              !standard || contracts.length === 0 || loading || extracting
+            }
             className="w-full py-8 text-xl font-bold bg-gradient-to-r from-[#2196F3] to-[#21CBF3] hover:from-[#2196F3]/90 hover:to-[#21CBF3]/90 shadow-lg disabled:opacity-50"
             size="lg"
           >
@@ -120,9 +198,9 @@ export default function App() {
           )}
 
           {error && (
-            <div className="bg-red-500/20 border border-red-500 rounded-lg p-4 text-white font-semibold">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           {comparisons.length > 0 && (
