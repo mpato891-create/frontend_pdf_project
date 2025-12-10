@@ -10,7 +10,6 @@ import {
   Loader2,
   WifiOff,
   CheckCircle,
-  FileStack,
 } from "lucide-react";
 import { extractText, checkAPIHealth } from "@/api/services/api";
 
@@ -72,26 +71,11 @@ export default function App() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#667eea] to-[#764ba2] py-8 md:py-16">
       <div className="container mx-auto px-4 max-w-6xl">
-        {/* ✅ Header with OCR Button */}
-        <div className="flex justify-between items-center mb-4 gap-4">
-          {/* Empty spacer for alignment on mobile */}
-          <div className="w-8 md:w-0"></div>
-
-          {/* Main Title */}
-          <h1 className="text-4xl md:text-6xl font-bold text-white text-center flex-1 drop-shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
+        {/* ✅ Header - Simplified (OCR Button Removed) */}
+        <div className="flex justify-center items-center mb-8">
+          <h1 className="text-4xl md:text-6xl font-bold text-white text-center drop-shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
             Smart Contract Comparator
           </h1>
-
-          {/* OCR Button */}
-          <a
-            href="https://www.ilovepdf.com/ocr-pdf"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 rounded-xl text-white font-semibold transition-all shadow-lg hover:shadow-xl group shrink-0"
-          >
-            <FileStack className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            <span className="hidden md:inline">OCR Tool</span>
-          </a>
         </div>
 
         <p className="text-white/90 text-center mb-6 text-lg max-w-3xl mx-auto">
